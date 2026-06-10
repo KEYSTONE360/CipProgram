@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cip 출결 확인 프로그램</title>
+    <style>
+        :root {
+            /* iOS 다크모드 컬러 팔레트 */
+            --ios-bg: #000000;
+            --ios-card: rgba(40, 40, 40, 0.55);
+            --ios-card-absent: rgba(255, 59, 48, 0.15);
+            --ios-border: rgba(255, 255, 255, 0.18);
+            --ios-border-absent: rgba(255, 59, 48, 0.4);
+            --ios-green: #34C759;
+            --ios-red: #FF3B30;
+            --ios-blue: #0A84FF;
+            --ios-orange: #FF9500;
+            --text-main: #FFFFFF;
+            --text-sub: #EBEBF599; 
+        }
+
+        body {
+            margin: 0; padding: 20px;
+            background-color: var(--ios-bg);
+            background-image: 
+                radial-gradient(circle at 15% 0%, rgba(10, 132, 255, 0.15), transparent 40%),
+                radial-gradient(circle at 85% 100%, rgba(52, 199, 89, 0.1), transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            font-size: 16px;
+        }
+        
+        /* 상단 고정 헤더 (블러 효과) */
+        .header {
+            position: sticky; top: 0; 
+            background: rgba(20, 20, 20, 0.65);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            padding: 20px 25px; 
+            border-bottom: 1px solid var(--ios-border); 
+            z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 20px;
+            border-radius: 16px; margin-bottom: 25px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* 왼쪽 타이틀 및 시간 */
+        .header-left { display: flex; flex-direction: column; gap: 8px; }
+        .header h2 { margin: 0; font-size: 1.4rem; font-weight: 600; color: var(--ios-blue); }
+        .current-time { 
+            font-size: 1.6rem; /* 시간 크기 대폭 확대 */
+            color: #fff; 
+            font-weight: 700; 
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 중앙 통계 */
+        .stats { 
+            font-weight: 600; font-size: 1.2rem; 
+            background: rgba(0,0,0,0.4); padding: 10px 20px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .stats span { margin-left: 15px; }
+        .text-green { color: var(--ios-green); }
+        .text-red { color: var(--ios-red); }
+        
+        /* 우측 시간표 위젯 */
+        .timetable {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 12px 18px;
+            display: flex; flex-direction: column; gap: 6px;
+            min-width: 180px;
+        }
+        .tt-row { display: flex; justify-content: space-between; gap: 20px; font-size: 0.95rem; }
+        .tt-label { font-weight: 700; color: var(--ios-orange); }
+        .tt-time { color: var(--text-main); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        button { cursor: pointer; border: none; border-radius: 10px; font-weight: 600; font-family: inherit; }
+
+        /* 바둑판 배열 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+        }
+        
+        /* 개별 학생 카드 (Glassmorphism) */
+        .card {
+            background: var(--ios-card);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border: 1px solid var(--ios-border);
+            border-radius: 20px; 
+            padding: 18px;
+            display: flex; flex-direction: column; gap: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .card.is-absent {
+            background: var(--ios-card-absent); 
+            border-color: var(--ios-border-absent);
+        }
+        
+        .card-top { display: flex; justify-content: space-between; align-items: center; }
+        .info .id { color: var(--text-sub); font-size: 0.95rem; margin-right: 6px; font-weight: 500;}
+        .info .name { font-weight: 600; font-size: 1.3rem; letter-spacing: -0.5px;}
+        
+        .btn-group { 
+            display: flex; border-radius: 8px; overflow: hidden; 
+            background: rgba(0, 0, 0, 0.4); width: 120px; padding: 2px;
+        }
+        .btn-group .btn { 
+            flex: 1; padding: 6px 0; font-size: 0.9rem; background: transparent; 
+            color: var(--text-sub); transition: 0.2s; border-radius: 6px;
+        }
+        .card.is-present .btn-present { background: var(--ios-green); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
+        .card.is-absent .btn-absent { background: var(--ios-red); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
+
+        .input-group { display: flex; gap: 8px; height: 38px; }
+        input[type="text"], select {
+            width: 100%; padding: 6px 12px; border-radius: 10px; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.25); color: #fff; 
+            font-size: 0.95rem; box-sizing: border-box; font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--ios-blue); background: rgba(0, 0, 0, 0.4);}
+        
+        select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: 10px auto; padding-right: 25px;}
+        select option { background: #1c1c1e; color: #fff; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <h2>📊 Cip 출결</h2>
+        <div id="real-time-clock" class="current-time">0000년 00월 00일 00:00:00</div>
+    </div>
+    
+    <div class="stats">
+        총 <span id="cnt-total">0</span>명 
+        <span class="text-green">참여: <span id="cnt-present">0</span></span>
+        <span class="text-red">미참여: <span id="cnt-absent">0</span></span>
+    </div>
+
+    <div class="timetable">
+        <div class="tt-row"><span class="tt-label">Cip 1차</span> <span class="tt-time">4:30 ~ 5:40</span></div>
+        <div class="tt-row"><span class="tt-label">Cip 2차</span> <span class="tt-time">6:40 ~ 8:00</span></div>
+        <div class="tt-row"><span class="tt-label">Cip 3차</span> <span class="tt-time">8:10 ~ 9:00</span></div>
+        <div class="tt-row"><span class="tt-label">저특공</span> <span class="tt-time">9:00 ~ 10:00</span></div>
+    </div>
+</div>
+
+<div class="grid-container" id="list"></div>
+
+<script>
+    // --- 실시간 시계 로직 ---
+    function updateClock() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        
+        const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+        const dayOfWeek = daysOfWeek[now.getDay()];
+
+        let hours = now.getHours();
+        const ampm = hours >= 12 ? '오후' : '오전';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+
+        // 시간을 큼직하고 보기 좋게 포맷팅
+        const timeString = `${ampm} ${hours}:${minutes}:${seconds}`;
+        const dateString = `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
+        
+        document.getElementById('real-time-clock').innerHTML = `<span style="font-size:1rem; color:#EBEBF599; font-weight:500; margin-right:8px;">${dateString}</span>${timeString}`;
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // --- 학생 데이터 및 로직 ---
+    const students = [
+        { id: "10801", name: "곽승찬" }, { id: "10802", name: "권용우" },
+        { id: "10803", name: "권혁준" }, { id: "10804", name: "김동언" },
+        { id: "10805", name: "김동욱" }, { id: "10806", name: "김명찬" },
+        { id: "10807", name: "김민재" }, { id: "10808", name: "김성수" },
+        { id: "10809", name: "남현승" }, { id: "10810", name: "노진유" },
+        { id: "10811", name: "박유찬" }, { id: "10813", name: "송민재" },
+        { id: "10814", name: "신민호" }, { id: "10815", name: "연윤" },
+        { id: "10816", name: "오영준" }, { id: "10817", name: "오준혁" },
+        { id: "10818", name: "유태경" }, { id: "10819", name: "이기용" },
+        { id: "10820", name: "이시온" }, { id: "10821", name: "이예준" },
+        { id: "10822", name: "이정우" }, { id: "10823", name: "이주호" },
+        { id: "10824", name: "이지원" }, { id: "10825", name: "이창근" },
+        { id: "10826", name: "임강현" }, { id: "10827", name: "전승훈" },
+        { id: "10828", name: "정민재" }, { id: "10829", name: "정시우" },
+        { id: "10830", name: "정태진" }, { id: "10831", name: "조성빈" },
+        { id: "10832", name: "최희찬" }, { id: "10833", name: "한경민" },
+        { id: "10835", name: "홍산들" }, { id: "10836", name: "이준우" }
+    ];
+
+    const listDiv = document.getElementById('list');
+
+    students.forEach(st => {
+        const card = document.createElement('div');
+        card.className = 'card is-present';
+        card.id = `card-${st.id}`;
+
+        card.innerHTML = `
+            <div class="card-top">
+                <div class="info">
+                    <span class="id">${st.id}</span>
+                    <span class="name">${st.name}</span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-present" onclick="setStatus('${st.id}', 'present')">참여</button>
+                    <button class="btn btn-absent" onclick="setStatus('${st.id}', 'absent')">미참</button>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <select id="loc-select-${st.id}" class="select-loc" onchange="checkLocation('${st.id}')">
+                    <option value="교실" selected>📍 교실</option>
+                    <option value="프로젝트실">📍 프로젝트실</option>
+                    <option value="직접입력">📍 직접 입력</option>
+                </select>
+                <input type="text" id="loc-custom-${st.id}" class="hidden" placeholder="위치 입력">
+                
+                <select id="reason-${st.id}" class="hidden" onchange="checkReason('${st.id}')">
+                    <option value="학원">학원</option>
+                    <option value="동아리">동아리</option>
+                    <option value="기타">기타(직접)</option>
+                </select>
+                <input type="text" id="custom-${st.id}" class="hidden" placeholder="📝 사유 입력">
+            </div>
+        `;
+        listDiv.appendChild(card);
+    });
+
+    function setStatus(id, status) {
+        const card = document.getElementById(`card-${id}`);
+        const locSelect = document.getElementById(`loc-select-${id}`);
+        const locCustom = document.getElementById(`loc-custom-${id}`);
+        const reasonSelect = document.getElementById(`reason-${id}`);
+        const customInput = document.getElementById(`custom-${id}`);
+
+        if (status === 'present') {
+            card.classList.add('is-present');
+            card.classList.remove('is-absent');
+            
+            locSelect.classList.remove('hidden');
+            if(locSelect.value === '직접입력') locCustom.classList.remove('hidden');
+            
+            reasonSelect.classList.add('hidden');
+            customInput.classList.add('hidden');
+        } else {
+            card.classList.remove('is-present');
+            card.classList.add('is-absent');
+            
+            locSelect.classList.add('hidden');
+            locCustom.classList.add('hidden');
+            
+            reasonSelect.classList.remove('hidden');
+            if (reasonSelect.value === '기타') {
+                customInput.classList.remove('hidden');
+            }
+        }
+        updateCounts();
+    }
+
+    function checkLocation(id) {
+        const locSelect = document.getElementById(`loc-select-${id}`);
+        const locCustom = document.getElementById(`loc-custom-${id}`);
+        if (locSelect.value === '직접입력') {
+            locSelect.style.width = '35%';
+            locCustom.classList.remove('hidden');
+            locCustom.style.width = '65%';
+            locCustom.focus();
+        } else {
+            locSelect.style.width = '100%';
+            locCustom.classList.add('hidden');
+        }
+    }
+
+    function checkReason(id) {
+        const reasonSelect = document.getElementById(`reason-${id}`);
+        const customInput = document.getElementById(`custom-${id}`);
+        if (reasonSelect.value === '기타') {
+            reasonSelect.style.width = '35%';
+            customInput.classList.remove('hidden');
+            customInput.style.width = '65%';
+            customInput.focus();
+        } else {
+            reasonSelect.style.width = '100%';
+            customInput.classList.add('hidden');
+        }
+    }
+
+    function updateCounts() {
+        const total = students.length;
+        const absent = document.querySelectorAll('.card.is-absent').length;
+        const present = total - absent;
+
+        document.getElementById('cnt-total').innerText = total;
+        document.getElementById('cnt-present').innerText = present;
+        document.getElementById('cnt-absent').innerText = absent;
+    }
+
+    updateCounts();
+</script>
+
+</body>
+</html>
