@@ -3,154 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cip 출결 확인 프로그램</title>
+    <title>Cip 출결 관리 Pro</title>
     <style>
         :root {
-            /* iOS 다크모드 컬러 팔레트 */
-            --ios-bg: #000000;
-            --ios-card: rgba(40, 40, 40, 0.55);
+            --ios-bg: #050505;
+            --ios-card: rgba(30, 30, 30, 0.6);
             --ios-card-absent: rgba(255, 59, 48, 0.15);
-            --ios-border: rgba(255, 255, 255, 0.18);
-            --ios-border-absent: rgba(255, 59, 48, 0.4);
-            --ios-green: #34C759;
-            --ios-red: #FF3B30;
+            --ios-border-light: rgba(255, 255, 255, 0.15);
+            --ios-border-dark: rgba(0, 0, 0, 0.8);
+            --ios-border-absent: rgba(255, 59, 48, 0.5);
+            --ios-green: #30D158;
+            --ios-red: #FF453A;
             --ios-blue: #0A84FF;
-            --ios-orange: #FF9500;
-            --text-main: #FFFFFF;
-            --text-sub: #EBEBF599; 
+            --ios-orange: #FF9F0A;
+            --text-main: #F5F5F7;
+            --text-sub: #EBEBF5A6; 
+            --easing-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
         }
 
         body {
-            margin: 0; padding: 20px;
+            margin: 0; padding: 25px 25px 80px 25px; 
             background-color: var(--ios-bg);
-            background-image: 
-                radial-gradient(circle at 15% 0%, rgba(10, 132, 255, 0.15), transparent 40%),
-                radial-gradient(circle at 85% 100%, rgba(52, 199, 89, 0.1), transparent 40%);
-            background-attachment: fixed;
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
             font-size: 16px;
+            min-height: 100vh;
         }
         
-        /* 상단 고정 헤더 (블러 효과) */
+        .bg-aurora {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; pointer-events: none; overflow: hidden;
+        }
+        .bg-aurora::before, .bg-aurora::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            filter: blur(90px);
+        }
+        .bg-aurora::before {
+            background: radial-gradient(circle at 20% 30%, rgba(10, 132, 255, 0.15), transparent 40%);
+            animation: drift1 20s infinite alternate var(--easing-apple);
+        }
+        .bg-aurora::after {
+            background: radial-gradient(circle at 80% 80%, rgba(48, 209, 88, 0.1), transparent 40%);
+            animation: drift2 25s infinite alternate var(--easing-apple);
+        }
+        @keyframes drift1 { 0% { transform: translate(0, 0); } 100% { transform: translate(10vw, 15vh); } }
+        @keyframes drift2 { 0% { transform: translate(0, 0); } 100% { transform: translate(-10vw, -15vh); } }
+
         .header {
             position: sticky; top: 0; 
-            background: rgba(20, 20, 20, 0.65);
-            backdrop-filter: saturate(180%) blur(20px);
-            -webkit-backdrop-filter: saturate(180%) blur(20px);
-            padding: 20px 25px; 
-            border-bottom: 1px solid var(--ios-border); 
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: saturate(200%) blur(30px);
+            -webkit-backdrop-filter: saturate(200%) blur(30px);
+            padding: 20px 30px; 
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
             z-index: 100;
             display: flex; justify-content: space-between; align-items: center;
             flex-wrap: wrap; gap: 20px;
-            border-radius: 16px; margin-bottom: 25px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 20px; margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            animation: slideDown 0.8s var(--easing-apple) backwards;
         }
         
-        /* 왼쪽 타이틀 및 시간 */
-        .header-left { display: flex; flex-direction: column; gap: 8px; }
-        .header h2 { margin: 0; font-size: 1.4rem; font-weight: 600; color: var(--ios-blue); }
+        .header-left { display: flex; flex-direction: column; gap: 6px; }
+        .header h2 { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--ios-blue); letter-spacing: -0.5px; text-transform: uppercase;}
+        
+        /* 초 부분 정렬을 위해 baseline에서 center로 변경 */
         .current-time { 
-            font-size: 1.6rem; /* 시간 크기 대폭 확대 */
-            color: #fff; 
-            font-weight: 700; 
-            letter-spacing: 0.5px;
-            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.2);
+            font-size: 1.8rem; color: #fff; font-weight: 700; letter-spacing: 0.5px;
+            text-shadow: 0 2px 15px rgba(255, 255, 255, 0.25);
+            display: flex; align-items: center; gap: 4px;
         }
+        .time-date { font-size: 1.1rem; color: var(--text-sub); font-weight: 500; margin-right: 10px; }
+        .time-colon { animation: pulse 1s infinite; }
         
-        /* 중앙 통계 */
+        /* vertical-align 제거 및 고정 높이 지정 */
+        .sec-box { display: inline-block; position: relative; width: 32px; text-align: center; overflow: hidden; height: 1.8rem; }
+        /* top, height, line-height 조정을 통해 상하 텍스트 정렬 정밀 교정 */
+        .sec-text { position: absolute; left: 0; top: 0; width: 100%; height: 100%; line-height: 1.8rem; transition: transform 0.3s var(--easing-apple), opacity 0.3s var(--easing-apple); }
+        .sec-text.out-up { transform: translateY(-100%); opacity: 0; }
+        .sec-text.in-up { transform: translateY(100%); opacity: 0; }
+        .sec-text.active { transform: translateY(0); opacity: 1; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
         .stats { 
-            font-weight: 600; font-size: 1.2rem; 
-            background: rgba(0,0,0,0.4); padding: 10px 20px; border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
+            font-weight: 600; font-size: 1.15rem; 
+            background: linear-gradient(145deg, rgba(40,40,40,0.6), rgba(10,10,10,0.8));
+            padding: 12px 24px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 15px rgba(0,0,0,0.3);
         }
         .stats span { margin-left: 15px; }
-        .text-green { color: var(--ios-green); }
-        .text-red { color: var(--ios-red); }
+        .text-green { color: var(--ios-green); text-shadow: 0 0 10px rgba(48,209,88,0.3);}
+        .text-red { color: var(--ios-red); text-shadow: 0 0 10px rgba(255,69,58,0.3);}
         
-        /* 우측 시간표 위젯 */
         .timetable {
-            background: rgba(0, 0, 0, 0.4);
+            background: linear-gradient(145deg, rgba(30, 30, 30, 0.5), rgba(10, 10, 10, 0.6));
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 12px 18px;
-            display: flex; flex-direction: column; gap: 6px;
-            min-width: 180px;
+            border-radius: 16px;
+            padding: 14px 20px;
+            display: flex; flex-direction: column; gap: 8px;
+            min-width: 200px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 5px 20px rgba(0,0,0,0.4);
         }
         .tt-row { display: flex; justify-content: space-between; gap: 20px; font-size: 0.95rem; }
         .tt-label { font-weight: 700; color: var(--ios-orange); }
-        .tt-time { color: var(--text-main); font-weight: 500; font-variant-numeric: tabular-nums; }
+        .tt-time { color: var(--text-main); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-        button { cursor: pointer; border: none; border-radius: 10px; font-weight: 600; font-family: inherit; }
-
-        /* 바둑판 배열 */
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
         }
         
-        /* 개별 학생 카드 (Glassmorphism) */
         .card {
-            background: var(--ios-card);
+            background: linear-gradient(180deg, rgba(45, 45, 45, 0.7) 0%, rgba(25, 25, 25, 0.7) 100%);
             backdrop-filter: saturate(180%) blur(20px);
             -webkit-backdrop-filter: saturate(180%) blur(20px);
-            border: 1px solid var(--ios-border);
-            border-radius: 20px; 
-            padding: 18px;
-            display: flex; flex-direction: column; gap: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+            border-radius: 22px; 
+            padding: 20px;
+            display: flex; flex-direction: column; gap: 16px;
+            transition: all 0.4s var(--easing-apple);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            opacity: 0; transform: translateY(20px);
+            animation: cardFadeUp 0.6s var(--easing-apple) forwards;
         }
         
+        .card:hover {
+            transform: translateY(-4px) scale(1.01) !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            background: linear-gradient(180deg, rgba(55, 55, 55, 0.75) 0%, rgba(30, 30, 30, 0.75) 100%);
+        }
+
         .card.is-absent {
-            background: var(--ios-card-absent); 
-            border-color: var(--ios-border-absent);
+            background: linear-gradient(180deg, rgba(60, 20, 20, 0.6) 0%, rgba(30, 10, 10, 0.6) 100%);
+            border-top: 1px solid rgba(255, 59, 48, 0.4);
+            box-shadow: 0 10px 30px rgba(255, 59, 48, 0.15);
         }
         
-        .card-top { display: flex; justify-content: space-between; align-items: center; }
-        .info .id { color: var(--text-sub); font-size: 0.95rem; margin-right: 6px; font-weight: 500;}
-        .info .name { font-weight: 600; font-size: 1.3rem; letter-spacing: -0.5px;}
+        @keyframes cardFadeUp { to { opacity: 1; transform: translateY(0); } }
+
+        .card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .info { flex: 1; display: flex; align-items: baseline; }
+        .info .id { color: var(--text-sub); font-size: 0.95rem; margin-right: 8px; font-weight: 600;}
+        .info .name { font-weight: 700; font-size: 1.4rem; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); white-space: nowrap;}
         
         .btn-group { 
-            display: flex; border-radius: 8px; overflow: hidden; 
-            background: rgba(0, 0, 0, 0.4); width: 120px; padding: 2px;
+            display: flex; border-radius: 10px; overflow: hidden; 
+            background: rgba(0, 0, 0, 0.6); width: 130px; padding: 3px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            position: relative;
         }
         .btn-group .btn { 
-            flex: 1; padding: 6px 0; font-size: 0.9rem; background: transparent; 
-            color: var(--text-sub); transition: 0.2s; border-radius: 6px;
+            flex: 1; padding: 8px 0; font-size: 0.95rem; font-weight: 700; background: transparent; 
+            color: var(--text-sub); transition: all 0.3s var(--easing-apple); border-radius: 8px;
+            z-index: 2; cursor: pointer; border: none; font-family: inherit;
         }
-        .card.is-present .btn-present { background: var(--ios-green); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
-        .card.is-absent .btn-absent { background: var(--ios-red); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
-
-        .input-group { display: flex; gap: 8px; height: 38px; }
-        input[type="text"], select {
-            width: 100%; padding: 6px 12px; border-radius: 10px; 
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.25); color: #fff; 
-            font-size: 0.95rem; box-sizing: border-box; font-family: inherit;
-            transition: border-color 0.2s;
-        }
-        input:focus, select:focus { outline: none; border-color: var(--ios-blue); background: rgba(0, 0, 0, 0.4);}
         
-        select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: 10px auto; padding-right: 25px;}
-        select option { background: #1c1c1e; color: #fff; }
+        .card.is-present .btn-present { 
+            background: var(--ios-green); color: #fff; 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3); 
+        }
+        .card.is-absent .btn-absent { 
+            background: var(--ios-red); color: #fff; 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
 
-        .hidden { display: none !important; }
+        .input-group { display: flex; gap: 10px; transition: all 0.3s var(--easing-apple); }
+        .input-item {
+            width: 100%; padding: 10px 14px; border-radius: 12px; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3); color: #fff; 
+            font-size: 0.95rem; box-sizing: border-box; font-family: inherit; font-weight: 500;
+            transition: all 0.3s var(--easing-apple);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+            height: 42px; 
+        }
+        .input-item:focus { 
+            outline: none; border-color: var(--ios-blue); 
+            background: rgba(10, 132, 255, 0.1); 
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2), inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .hidden-animated {
+            opacity: 0 !important;
+            width: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            border-width: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none;
+        }
+
+        select.input-item { 
+            appearance: none; -webkit-appearance: none; 
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); 
+            background-repeat: no-repeat; background-position: right 14px top 50%; background-size: 10px auto; padding-right: 30px; cursor: pointer;
+        }
+        select option { background: #1c1c1e; color: #fff; }
     </style>
 </head>
 <body>
 
+<div class="bg-aurora"></div>
+
 <div class="header">
     <div class="header-left">
-        <h2>📊 Cip 출결</h2>
-        <div id="real-time-clock" class="current-time">0000년 00월 00일 00:00:00</div>
+        <h2>Cip Management Pro</h2>
+        <div id="real-time-clock" class="current-time">
+            <span class="time-date" id="t-date"></span>
+            <span id="t-ampm" style="font-size:1.2rem; margin-right:4px;"></span>
+            <span id="t-hm"></span><span class="time-colon">:</span>
+            <div class="sec-box">
+                <div id="t-sec-old" class="sec-text out-up">00</div>
+                <div id="t-sec-new" class="sec-text active">00</div>
+            </div>
+        </div>
     </div>
     
     <div class="stats">
         총 <span id="cnt-total">0</span>명 
-        <span class="text-green">참여: <span id="cnt-present">0</span></span>
-        <span class="text-red">미참여: <span id="cnt-absent">0</span></span>
+        <span class="text-green">참여 <span id="cnt-present">0</span></span>
+        <span class="text-red">미참여 <span id="cnt-absent">0</span></span>
     </div>
 
     <div class="timetable">
@@ -164,35 +246,46 @@
 <div class="grid-container" id="list"></div>
 
 <script>
-    // --- 실시간 시계 로직 ---
+    let currentSecond = -1;
     function updateClock() {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
-        
         const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
         const dayOfWeek = daysOfWeek[now.getDay()];
 
         let hours = now.getHours();
         const ampm = hours >= 12 ? '오후' : '오전';
-        hours = hours % 12;
-        hours = hours ? hours : 12; 
-        
+        hours = hours % 12; hours = hours ? hours : 12; 
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
 
-        // 시간을 큼직하고 보기 좋게 포맷팅
-        const timeString = `${ampm} ${hours}:${minutes}:${seconds}`;
-        const dateString = `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
-        
-        document.getElementById('real-time-clock').innerHTML = `<span style="font-size:1rem; color:#EBEBF599; font-weight:500; margin-right:8px;">${dateString}</span>${timeString}`;
+        document.getElementById('t-date').innerText = `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
+        document.getElementById('t-ampm').innerText = ampm;
+        document.getElementById('t-hm').innerText = `${hours}:${minutes}`;
+
+        if (currentSecond !== seconds) {
+            const elOld = document.getElementById('t-sec-old');
+            const elNew = document.getElementById('t-sec-new');
+            
+            elOld.innerText = currentSecond === -1 ? seconds : String(currentSecond).padStart(2, '0');
+            elOld.className = 'sec-text active';
+            
+            elNew.innerText = seconds;
+            elNew.className = 'sec-text in-up';
+            
+            setTimeout(() => {
+                elOld.className = 'sec-text out-up';
+                elNew.className = 'sec-text active';
+            }, 20);
+
+            currentSecond = seconds;
+        }
     }
-    
     updateClock();
     setInterval(updateClock, 1000);
 
-    // --- 학생 데이터 및 로직 ---
     const students = [
         { id: "10801", name: "곽승찬" }, { id: "10802", name: "권용우" },
         { id: "10803", name: "권혁준" }, { id: "10804", name: "김동언" },
@@ -215,10 +308,11 @@
 
     const listDiv = document.getElementById('list');
 
-    students.forEach(st => {
+    students.forEach((st, index) => {
         const card = document.createElement('div');
         card.className = 'card is-present';
         card.id = `card-${st.id}`;
+        card.style.animationDelay = `${index * 0.03}s`;
 
         card.innerHTML = `
             <div class="card-top">
@@ -233,19 +327,19 @@
             </div>
             
             <div class="input-group">
-                <select id="loc-select-${st.id}" class="select-loc" onchange="checkLocation('${st.id}')">
+                <select id="loc-select-${st.id}" class="input-item" onchange="checkLocation('${st.id}')">
                     <option value="교실" selected>📍 교실</option>
                     <option value="프로젝트실">📍 프로젝트실</option>
                     <option value="직접입력">📍 직접 입력</option>
                 </select>
-                <input type="text" id="loc-custom-${st.id}" class="hidden" placeholder="위치 입력">
+                <input type="text" id="loc-custom-${st.id}" class="input-item hidden-animated" placeholder="위치 입력">
                 
-                <select id="reason-${st.id}" class="hidden" onchange="checkReason('${st.id}')">
+                <select id="reason-${st.id}" class="input-item hidden-animated" onchange="checkReason('${st.id}')">
                     <option value="학원">학원</option>
                     <option value="동아리">동아리</option>
                     <option value="기타">기타(직접)</option>
                 </select>
-                <input type="text" id="custom-${st.id}" class="hidden" placeholder="📝 사유 입력">
+                <input type="text" id="custom-${st.id}" class="input-item hidden-animated" placeholder="📝 사유 입력">
             </div>
         `;
         listDiv.appendChild(card);
@@ -262,22 +356,25 @@
             card.classList.add('is-present');
             card.classList.remove('is-absent');
             
-            locSelect.classList.remove('hidden');
-            if(locSelect.value === '직접입력') locCustom.classList.remove('hidden');
+            locSelect.classList.remove('hidden-animated');
+            if(locSelect.value === '직접입력') locCustom.classList.remove('hidden-animated');
             
-            reasonSelect.classList.add('hidden');
-            customInput.classList.add('hidden');
+            reasonSelect.classList.add('hidden-animated');
+            customInput.classList.add('hidden-animated');
+            
+            locSelect.style.width = locSelect.value === '직접입력' ? '40%' : '100%';
         } else {
             card.classList.remove('is-present');
             card.classList.add('is-absent');
             
-            locSelect.classList.add('hidden');
-            locCustom.classList.add('hidden');
+            locSelect.classList.add('hidden-animated');
+            locCustom.classList.add('hidden-animated');
             
-            reasonSelect.classList.remove('hidden');
+            reasonSelect.classList.remove('hidden-animated');
             if (reasonSelect.value === '기타') {
-                customInput.classList.remove('hidden');
+                customInput.classList.remove('hidden-animated');
             }
+            reasonSelect.style.width = reasonSelect.value === '기타' ? '40%' : '100%';
         }
         updateCounts();
     }
@@ -286,13 +383,14 @@
         const locSelect = document.getElementById(`loc-select-${id}`);
         const locCustom = document.getElementById(`loc-custom-${id}`);
         if (locSelect.value === '직접입력') {
-            locSelect.style.width = '35%';
-            locCustom.classList.remove('hidden');
-            locCustom.style.width = '65%';
-            locCustom.focus();
+            locSelect.style.width = '40%';
+            locCustom.classList.remove('hidden-animated');
+            locCustom.style.width = '60%';
+            setTimeout(() => locCustom.focus(), 100);
         } else {
             locSelect.style.width = '100%';
-            locCustom.classList.add('hidden');
+            locCustom.classList.add('hidden-animated');
+            locCustom.style.width = '0';
         }
     }
 
@@ -300,13 +398,14 @@
         const reasonSelect = document.getElementById(`reason-${id}`);
         const customInput = document.getElementById(`custom-${id}`);
         if (reasonSelect.value === '기타') {
-            reasonSelect.style.width = '35%';
-            customInput.classList.remove('hidden');
-            customInput.style.width = '65%';
-            customInput.focus();
+            reasonSelect.style.width = '40%';
+            customInput.classList.remove('hidden-animated');
+            customInput.style.width = '60%';
+            setTimeout(() => customInput.focus(), 100);
         } else {
             reasonSelect.style.width = '100%';
-            customInput.classList.add('hidden');
+            customInput.classList.add('hidden-animated');
+            customInput.style.width = '0';
         }
     }
 
